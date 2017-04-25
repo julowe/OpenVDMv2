@@ -212,6 +212,8 @@ Install MapProxy
 sudo pip install MapProxy
 ```
 
+We encountered an error here with pip, so ran: `sudo apt-get purge -y python-pip` & `sudo easy_install pip` and then `sudo pip install MapProxy` worked.
+
 Build the initial configuration
 ```
 cd /mnt/nautilusfs/share/software/openvdm
@@ -431,32 +433,26 @@ Restart apache
 sudo service apache2 restart
 ```
 
-#### Create the Required Directories
-In order for OpenVDMv2 to properly store data serveral directories must be created on the Warehouse
+#### Mapping OpenVDM Required Directories to Existing File System
+In order for OpenVDMv2 to properly store data serveral directories must exist on NautilusFS.
 
- - **FTPRoot** - This will become the document root for the ProFTP server. 
- - **CruiseData** - This is the location where the Cruise Data directories will be located.  This directory needs to live within the **FTPRoot**
- - **PublicData** - This is the location where the Public Data share will be located.  This directory needs to live within the **FTPRoot**
- - **VisitorInformation** - This is the location where ship-specific information will be located.  This directory needs to live within the **FTPRoot**
+ - **FTPRoot** (/mnt/nautilusfs)- This will become the document root for the ProFTP server. (FTP will NOT be enabled)
+ - **CruiseData** (/mnt/nautilusfs/data)- This is the location where the Cruise Data directories will be located.  This directory needs to live within the **FTPRoot**
+ - **PublicData** (/mnt/nautilusfs/share/dataguest/2017)- This is the location where the Public Data share will be located.  This directory needs to live within the **FTPRoot**
+ - **VisitorInformation** (unclear as of now if this will be used)- This is the location where ship-specific information will be located.  This directory needs to live within the **FTPRoot**
 
 The Location of the **FTPRoot** needs to be large enough to hold multiple cruises worth of data.  In typical installation of OpenVDMv2, the location of the **FTPRoot** is on dedicated hardware (internal RAID array).  In these cases the volume is mounted at boot by the OS to a specific location (i.e. `/vault`).  Instructions on mounting volumes at boot is beyond the scope of these installation procedures however.
 
-For the purposes of these installation instructions the parent folder for **FTPRoot** will be a large RAID array located at: `/vault` and the user that will retain ownership of these folders will be "survey"
+For installation on the Nautilus, we have a file server NautilusFS with a external chassis connected by SAS cables. This is the main file system for all data on the ship. It resides at /mnt/nautilusfs - the datafetcher user will have write permissions to the /mnt/nautilusfs/data/current directory.
 
-```
-sudo mkdir -p /vault/FTPRoot/CruiseData
-sudo mkdir -p /vault/FTPRoot/PublicData
-sudo mkdir -p /vault/FTPRoot/VisitorInformation
-sudo chmod -R 777 /vault/FTPRoot/PublicData
-sudo chown -R survey:survey /vault/FTPRoot/*
-```
+All directories and permissions already existed.
 
 #### Download the OpenVDM Files from Github
 
 From a terminal window type:
 ```
-cd ~
-git clone git://github.com/webbpinner/OpenVDMv2.git ~/OpenVDMv2
+cd /mnt/nautilusfs/share/software/openvdm
+git clone git://github.com/webbpinner/OpenVDMv2.git git-repo
 ```
 
 #### Create OpenVDMv2 Database
@@ -470,9 +466,9 @@ Once connected to MySQL, create the database by typing:
 CREATE DATABASE OpenVDMv2;
 ```
 
-Now create a new MySQL user specifically for interacting with only the OpenVDM database.  In the example provided below the name of the user is `openvdmDBUser` and the password for that new user is `oxhzbeY8WzgBL3`.
+Now create a new MySQL user specifically for interacting with only the OpenVDM database.  In the example provided below the name of the user is `openvdmDBUser` and the password for that new user is `notArealPASSWORD`.
 ```
-GRANT ALL PRIVILEGES ON OpenVDMv2.* To openvdmDBUser@localhost IDENTIFIED BY 'oxhzbeY8WzgBL3';
+GRANT ALL PRIVILEGES ON OpenVDMv2.* To openvdmDBUser@localhost IDENTIFIED BY 'notArealPASSWORD';
 ```
 
 It is not important what the name and password are for this new user however it is important to remember the designated username/password as it will be reference later in the installation.
@@ -480,7 +476,7 @@ It is not important what the name and password are for this new user however it 
 To build the database schema and perform the initial import type:
 ```
 USE OpenVDMv2;
-source ~/OpenVDMv2/OpenVDMv2_db.sql;
+source /mnt/nautilusfs/share/software/openvdm/git-repo/OpenVDMv2_db.sql;
 ```
 
 Exit the MySQL console:
@@ -491,13 +487,13 @@ exit
 #### Install the OpenVDM configuration files
 ```
 sudo mkdir -p /usr/local/etc/openvdm
-sudo cp ~/OpenVDMv2/usr/local/etc/openvdm/openvdm.yaml.dist /usr/local/etc/openvdm/openvdm.yaml
-sudo cp ~/OpenVDMv2/usr/local/etc/openvdm/datadashboard.yaml.dist /usr/local/etc/openvdm/datadashboard.yaml
+sudo cp /mnt/nautilusfs/share/software/openvdm/git-repo/usr/local/etc/openvdm/openvdm.yaml.dist /usr/local/etc/openvdm/openvdm.yaml
+sudo cp /mnt/nautilusfs/share/software/openvdm/git-repo/usr/local/etc/openvdm/datadashboard.yaml.dist /usr/local/etc/openvdm/datadashboard.yaml
 ```
 
 #### Modify the OpenVDM configuation file
 ```
-sudo nano /usr/local/etc/openvdm/openvdm.yaml
+sudo vim /usr/local/etc/openvdm/openvdm.yaml
 ```
 Look for the following line:
 ```
@@ -509,7 +505,7 @@ If the web-application is NOT going to be accessed as `http://<server IP>/OpenVD
 Copy the web-application code to a directory that can be accessed by Apache
 
 ```
-sudo cp -r ~/OpenVDMv2/var/www/OpenVDMv2 /var/www/
+sudo cp -r /mnt/nautilusfs/share/software/openvdm/git-repo/var/www/OpenVDMv2 /var/www/
 sudo chown -R root:root /var/www/OpenVDMv2
 ```
 
@@ -524,14 +520,14 @@ Modify the two configuration files.
 
 Edit the `.htaccess` file:
 ```
-sudo nano /var/www/OpenVDMv2/.htaccess
+sudo vim /var/www/OpenVDMv2/.htaccess
 ```
 
  - Set the `RewriteBase` to part of the URL after the hostname that will become the landing page for OpenVDMv2.  By default this is set to `OpenVDMv2` meaning that once active users will go to http://<hostname or IP>/OpenVDMv2/.  If the default URL was changed in the `openvdm.yaml` file, you will need to change the `RewriteBase` accordingly.  Be sure to include the trailing `/`.
 
 Edit the `./app/Core/Config.php` file:
 ```
-sudo nano /var/www/OpenVDMv2/app/Core/Config.php
+sudo vim /var/www/OpenVDMv2/app/Core/Config.php
 ```
 
  - Set the URL of the OpenVDMv2 installation.  If the default URL was changed in the `openvdm.yaml` file, you will need to change this line accordingly.  Be sure to include the trailing `/`.  Look for the following lines and change the IP address in the URL to the actual IP address or hostname of the warehouse:
@@ -545,7 +541,7 @@ define('DIR', '/OpenVDMv2/');
 /*
  * Define path on webserver that contains cruise data
  */
-define('CRUISEDATA_BASEDIR', '/vault/FTPRoot/CruiseData');
+define('CRUISEDATA_BASEDIR', '/mnt/nautilusfs/data');
 ```
 
  - Set the access creditials for the MySQL database.  Look for the following lines and modify them to fit the actual database name (`DB_NAME`), database username (`DB_USER`), and database user password (`DB_PASS`).
@@ -563,12 +559,12 @@ define('DB_USER', 'openvdmDBUser');
 /*
  * Database password.
  */
-define('DB_PASS', 'oxhzbeY8WzgBL3');
+define('DB_PASS', 'notArealPASSWORD');
 ```
 
 Edit the default Apache2 VHost file.
 ```
-sudo nano /etc/apache2/sites-available/000-default.conf
+sudo vim /etc/apache2/sites-available/000-default.conf
 ```
 
 Copy text below into the Apache2 configuration file just above `</VirtualHost>`.  If you changed the default URL for OpenVDM you will need to edit the Alias definition.  You will need to alter the directory locations to match the locations selected for the **CruiseData**, **PublicData** and **VisitorInformation** directories:
@@ -601,14 +597,14 @@ Copy text below into the Apache2 configuration file just above `</VirtualHost>`.
     Require all granted
   </Directory>
 
-  Alias /VisitorInformation/ /vault/FTPRoot/VisitorInformation/
-  <Directory "/vault/FTPRoot/VisitorInformation">
-    AllowOverride None
-    Options +Indexes -FollowSymLinks +MultiViews
-    Order allow,deny
-    Allow from all
-    Require all granted
-  </Directory>
+  #Alias /VisitorInformation/ /vault/FTPRoot/VisitorInformation/
+  #<Directory "/vault/FTPRoot/VisitorInformation">
+    #AllowOverride None
+    #Options +Indexes -FollowSymLinks +MultiViews
+    #Order allow,deny
+    #Allow from all
+    #Require all granted
+  #</Directory>
 ```
 
 Reload Apache2
@@ -624,12 +620,12 @@ sudo mkdir /var/log/OpenVDM
 #### Install OpenVDMv2 Processes
 Copy the OpenVDMv2 processes to the `/usr/local/bin` folder
 ```
-sudo cp -r ~/OpenVDMv2/usr/local/bin/* /usr/local/bin/
+sudo cp -r /mnt/nautilusfs/share/software/openvdm/git-repo/usr/local/bin/* /usr/local/bin/
 ```
 
 #### Install the Supervisor configuration files
 ```
-sudo cp -r ~/OpenVDMv2/etc/supervisor/conf.d/* /etc/supervisor/conf.d/
+sudo cp -r /mnt/nautilusfs/share/software/openvdm/git-repo/etc/supervisor/conf.d/* /etc/supervisor/conf.d/
 ```
 
 Restart Supervisor
@@ -638,6 +634,10 @@ sudo service supervisor restart
 ```
 
 #### Setup the Samba shares
+
+-----------------
+Unclear if Samba shares will be used at this point
+-----------------
 
 Edit the Samba configuration file located at: `/etc/samba/smb.conf`.
 
@@ -694,18 +694,19 @@ Restart the Samba service
 sudo systemctl restart samba-ad-dc.service
 ```
 
-At this point the warehouse should have a working installation of OpenVDMv2 however the vessel operator will still need to configure data dashboard collection system transfers, cruise data transfers and the shoreside data warehouse.
+#### Accessing the application
+At this point NautilusFS should have a working installation of OpenVDMv2 however the vessel operator will still need to configure data dashboard collection system transfers, cruise data transfers and the shoreside data warehouse.
 
-To access the OpenVDM web-application goto: <http://127.0.0.1/OpenVDMv2/>
+To access the OpenVDM web-application goto: <http://nautilusfs.nautilus.oet.org/OpenVDMv2/>
 The default username/passwd is admin/demo
 
 #### Set the controlling username
-Goto <http://127.0.0.1/OpenVDMv2/config> and login
+Goto <http://nautilusfs.nautilus.oet.org/OpenVDMv2/config> and login
 
-Goto <http://127.0.0.1/OpenVDMv2/config/system> and scroll down to the bottom of the page.
+Goto <http://nautilusfs.nautilus.oet.org/OpenVDMv2/config/system> and scroll down to the bottom of the page.
 
 In the "Data Warehouses" section Click "Edit" next to Shipboard Data Warehouse (SBDW)
 
-Set the Server Username to match the user that was created for the data warehouse, in this guide the username was 'survey'
+Set the Server Username to match the user that was created for the data warehouse, which on the Nautilus is 'datafetcher'
 
 
