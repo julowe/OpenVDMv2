@@ -13,8 +13,6 @@ We are using the account `datafetcher` to write data to disk and to rysnc over s
 
 Please run `sudo apt-get update` & `sudo apt-get upgrade` to get new versions pf packages etc.
 
-------------------------------
-------------------------------
 
 ### SSH Client/Server
 SSH is used thoughout OpenVDM for providing secure communication between the Warehouse and collection systems workstations aboard the vessel.  SSH is also used for OpenVDM's ship-to-shore communications.
@@ -60,7 +58,7 @@ When installing MySQL you will be prompted to provide a 'root' password.  This i
 ### PHP7.1
 The language used to write the OpenVDMv2 web-interface is PHP.
 
-There is not an official package for debian 8 yet, so use [instruction from sury.org](https://packages.sury.org/php/README.txt) to add the repo for php 7.x packages.
+There is not an official package for debian 8 yet, so use [instructions from sury.org](https://packages.sury.org/php/README.txt) to add the repo for php 7.x packages.
 
 To install PHP open a terminal window and type:
 ```
