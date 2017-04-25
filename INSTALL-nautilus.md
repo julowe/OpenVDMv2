@@ -53,7 +53,7 @@ To install MySQL open a terminal window and type:
 ```
 sudo apt-get install mysql-server
 ```
-When installing MySQL you will be prompted to provide a 'root' password.  This is different than the 'root' password for the operating system but just as important to remember. 
+When installing MySQL you will be prompted to provide a 'root' password.  This is different than the 'root' password for the operating system but just as important to remember. This password is saved in the data-docs password master spreadsheet.
 
 ### PHP7.1
 The language used to write the OpenVDMv2 web-interface is PHP.
@@ -366,7 +366,7 @@ sudo apt-get install python-requests python-yaml
 ```
 
 #### Installing the gearman php module
-The gearman extension team at pecl has not yet updated the gearman php module to work with php7.0.  Luckily the open-source community has come to the rescue.
+The gearman extension team at pecl has not yet updated the gearman php module to work with php7.1.  Luckily the open-source community has come to the rescue.
 
 Download the module
 ```
@@ -383,9 +383,9 @@ make
 sudo make install
 ```
 
-Create the file `/etc/php/7.0/mods-available/gearman.ini`
+Create the file `/etc/php/7.1/mods-available/gearman.ini`
 ```
-sudo vim /etc/php/7.0/mods-available/gearman.ini
+sudo vim /etc/php/7.1/mods-available/gearman.ini
 ```
 
 Copy the following into `gearman.ini`
@@ -411,9 +411,9 @@ sudo apt-get install libyaml-dev
 sudo pecl install yaml-2.0.0
 ```
 
-Create the file `/etc/php/7.0/mods-available/yaml.ini`
+Create the file `/etc/php/7.1/mods-available/yaml.ini`
 ```
-sudo vim /etc/php/7.0/mods-available/yaml.ini
+sudo vim /etc/php/7.1/mods-available/yaml.ini
 ```
 
 Copy the following into `gearman.ini`
@@ -562,6 +562,8 @@ define('DB_USER', 'openvdmDBUser');
 define('DB_PASS', 'notArealPASSWORD');
 ```
 
+and change line 123 `date_default_timezone_set('Europe/London');` to `date_default_timezone_set('UTC');`
+
 Edit the default Apache2 VHost file.
 ```
 sudo vim /etc/apache2/sites-available/000-default.conf
@@ -579,8 +581,8 @@ Copy text below into the Apache2 configuration file just above `</VirtualHost>`.
     RewriteRule ^/$ /OpenVDMv2/ [R]
   </IfModule>
 
-  Alias /CruiseData/ /vault/FTPRoot/CruiseData/
-  <Directory "/vault/FTPRoot/CruiseData">
+  Alias /CruiseData/ /mnt/nautilusfs/data
+  <Directory "/mnt/nautilusfs/data">
     AllowOverride None
     Options +Indexes -FollowSymLinks +MultiViews
     Order allow,deny
@@ -588,8 +590,8 @@ Copy text below into the Apache2 configuration file just above `</VirtualHost>`.
     Require all granted
   </Directory>
   
-  Alias /PublicData/ /vault/FTPRoot/PublicData/
-  <Directory "/vault/FTPRoot/PublicData">
+  Alias /PublicData/ /mnt/nautilusfs/share/dataguest/current
+  <Directory "/mnt/nautilusfs/share/dataguest/current">
     AllowOverride None
     Options +Indexes -FollowSymLinks +MultiViews
     Order allow,deny
@@ -605,6 +607,11 @@ Copy text below into the Apache2 configuration file just above `</VirtualHost>`.
     #Allow from all
     #Require all granted
   #</Directory>
+```
+
+`/etc/apache2/apache2.conf` by default blocks all access to the root file system. You must add the following to enable the abvove accesses:
+```
+stuff
 ```
 
 Reload Apache2
