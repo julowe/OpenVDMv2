@@ -633,6 +633,8 @@ sudo cp -r /mnt/nautilusfs/share/software/openvdm/git-repo/usr/local/bin/* /usr/
 #### Install the Supervisor configuration files
 ```
 sudo cp -r /mnt/nautilusfs/share/software/openvdm/git-repo/etc/supervisor/conf.d/* /etc/supervisor/conf.d/
+sudo cp /etc/supervisor/conf.d/OVDM_runCollectionSystemTransfer.conf.dist /etc/supervisor/conf.d/OVDM_runCollectionSystemTransfer.conf
+sudo cp /etc/supervisor/conf.d/OVDM_postCollectionSystemTransfer.conf.dist /etc/supervisor/conf.d/OVDM_postCollectionSystemTransfer.conf
 ```
 
 Restart Supervisor
