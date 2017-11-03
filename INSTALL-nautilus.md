@@ -642,6 +642,8 @@ Restart Supervisor
 sudo service supervisor restart
 ```
 
+Please note: supervisor < v3.2 does not always restart or stop cleanly on Debian. [Ref bug report](https://bugs.debian.org/cgi-bin/bugreport.cgi?bug=805920) Get around this by running `sudo service supervisor force-stop` and `sudo service supervisor force-stop` and then waiting a minute or two and running `sudo service supervisor start` 
+
 #### Setup the Samba shares
 
 -----------------
