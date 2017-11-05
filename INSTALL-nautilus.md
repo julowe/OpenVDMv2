@@ -721,3 +721,5 @@ In the "Data Warehouses" section Click "Edit" next to Shipboard Data Warehouse (
 Set the Server Username to match the user that was created for the data warehouse, which on the Nautilus is 'datafetcher'
 
 In `/etc/supervisor/conf.d/OVDM_runCollectionSystemTransfer.conf` & `OVDM_testCollectionSystemTransferTest.conf`, change `user=root` to `user=datafetcher`. The Collection System will not run if the test fails.
+
+In `/etc/supervisor/conf.d/OVDM_postCollectionSystemTransfer.conf` change `user=root` to `user=dataprocessor`.
