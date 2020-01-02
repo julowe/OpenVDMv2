@@ -1,0 +1,97 @@
+# Edit this file to introduce tasks to be run by cron.
+# 
+# Each task to run has to be defined through a single line
+# indicating with different fields when the task will be run
+# and what command to run for the task
+# 
+# To define the time you can provide concrete values for
+# minute (m), hour (h), day of month (dom), month (mon),
+# and day of week (dow) or use '*' in these fields (for 'any').# 
+# Notice that tasks will be started based on the cron's system
+# daemon's notion of time and timezones.
+# 
+# Output of the crontab jobs (including errors) is sent through
+# email to the user the crontab file belongs to (unless redirected).
+# 
+# For example, you can run a backup of all your user accounts
+# at 5 a.m every week with:
+# 0 5 * * 1 tar -zcf /var/backups/home.tgz /home/
+# 
+# For more information see the manual pages of crontab(5) and cron(8)
+# 
+
+## Needed for processing
+## GMT is in /usr/local/bin until upgrade to .deb with recent version
+PATH=/usr/bin:/bin:/sbin:/usr/sbin:/usr/lib/gmt/bin:/usr/local/bin
+
+
+# m h  dom mon dow   command
+
+## NautilusFS (file system) Backup - without /data directory
+## incremental runs at 0700 UTC - 0000 PST on day 1 of the week
+0 7 * * 1 /mnt/nautilusfs/install/bin/duplicity-weekly.sh
+## full backup runs every 1st of the month at 0800 UTC - 0100 PST
+0 8 1 * * /mnt/nautilusfs/install/bin/duplicity-monthly.sh
+
+
+## 20160914jkl duplicity backup of nautilus file server root/OS
+##                   every staruday at 2200pst do an incremental backup of fs1 root to the iscfs filesystem
+0 5  *   *   6      duplicity --no-encryption --volsize 500 --exclude /mnt --exclude /exports --exclude /tmp --exclude /proc --exclude /sys / file:///mnt/nautilusfs/share/backups/cron-nautilusfs/
+##                   every month, on the first sunday of that month [day of month <= 7], do a duplicity backup as abov3e, but force it to be a full backup
+0 5  *   *   0       [ $(date +\%d) -le 7 ] && duplicity full --no-encryption --volsize 500 --exclude /mnt --exclude /exports --exclude /tmp --exclude /proc --exclude /sys / file:///mnt/nautilusfs/share/backups/cron-nautilusfs/
+##                   after above full backup is done, remove all but last 2 full backups
+0 21 *   *   0       [ $(date +\%d) -le 7 ] && duplicity remove-all-but-n-full 1 --force file:///mnt/nautilusfs/share/backups/cron-nautilusfs/
+##                   after above backup (full or incremental) & cleanup, change permissions on files so other fileserver can read them (look in localadmin crontab for rsync)
+0 22 *   *   0      chmod 644 /mnt/nautilusfs/share/backups/cron-nautilusfs/*
+
+
+## Nautilus Dataguest Share Virus Scan
+42 0,8,16 * * * echo `date` >> /var/log/clamav/dataguest_scan.log; clamscan -ril /var/log/clamav/dataguest_scan.log --no-summary /mnt/nautilusfs/share/dataguest/current
+
+
+###########################################     
+###      Nautilus data synching         ###
+### comment out during cruise rotation  ###
+###########################################
+
+## send server CPU into to capture machine
+* * * * * /mnt/nautilusfs/install/oetds/current/logging/cpu-sensors-to-logger.sh capture 42004
+
+## Data sync:
+0,15,30,45 * * * *  /mnt/nautilusfs/install/oetds/current/logging/aggregator/syncwrapper.sh /mnt/nautilusfs/install/etc/oetds/current/datasync-config.sh
+
+###########################################
+###     Nautilus data processing        ###
+### comment out during cruise rotation  ###
+###########################################
+
+
+
+## Captures2PNGs: every 15 minutes and yesterday
+05,20,35,50,59 * * * *  su dataprocessor -c "/mnt/nautilusfs/install/oetds/current/processing/captures2pngs.pl --deinterlace --datadir /mnt/nautilusfs/data --day today" >> /var/log/synclogs/processing.log 2>&1
+
+08 00 * * *  su dataprocessor -c "/mnt/nautilusfs/install/oetds/current/processing/captures2pngs.pl --deinterlace --datadir /mnt/nautilusfs/data --day yesterday" >> /var/log/synclogs/processing.log 2>&1
+
+## Dailykml: plots every 15min
+05,20,35,50 * * * *  su dataprocessor -c "/mnt/nautilusfs/install/oetds/current/processing/dailykml.pl --day today --datadir /mnt/nautilusfs/data --outdir /mnt/nautilusfs/data" >> /var/log/synclogs/processing.log 2>&1
+
+## Dailykml: complete yesterday
+10 00 * * *  su dataprocessor -c "/mnt/nautilusfs/install/oetds/current/processing/dailykml.pl --day yesterday --datadir /mnt/nautilusfs/data --outdir /mnt/nautilusfs/data" >> /var/log/synclogs/processing.log 2>&1
+
+## Cruisely kml: after most recent day file is started
+12 00 * * *  su dataprocessor -c "/mnt/nautilusfs/install/oetds/current/processing/cruisekmlwrapper.pl --datadir /mnt/nautilusfs/data --outdir /mnt/nautilusfs/data/current/processed/trackline_plots" >> /var/log/synclogs/processing.log 2>&1
+
+## Eventlog: break out eventlog every 15min
+05,20,35,50,58 * * * *  su dataprocessor -c "/mnt/nautilusfs/install/oetds/current/processing/save-eventlog.sh /mnt/nautilusfs/data /mnt/nautilusfs/data `/mnt/nautilusfs/install/oetds/current/processing/get_cruisenum.pl /mnt/nautilusfs/data/current`" >> /var/log/synclogs/processing.log 2>&1
+
+## Eventlog: complete yesterday - 2 minutes before dive-reporter to ensure samples processing
+## Depends on aggregation grabbing eventlog files within 8 minutes. Unpleasant race condition.
+10 0 * * *  su dataprocessor -c "/mnt/nautilusfs/install/oetds/current/processing/save-eventlog.sh /mnt/nautilusfs/data /mnt/nautilusfs/data `/mnt/nautilusfs/install/oetds/current/processing/get_cruisenum.pl /mnt/nautilusfs/data/current` `/bin/date --date yesterday +%Y%m%d`" >> /var/log/synclogs/processing.log 2>&1
+
+## DiveReporter: plots every 15min for partials
+10,25,40,55,58 * * * *  su dataprocessor -c "/mnt/nautilusfs/install/oetds/current/processing/dive-reporter-wrapper.pl --datapath /mnt/nautilusfs/data --procpath /mnt/nautilusfs/data --cruise `/mnt/nautilusfs/install/oetds/current/processing/get_cruisenum.pl /mnt/nautilusfs/data/current` --debug" > /mnt/nautilusfs/data/current/processed/dive_reports/.processwrapperlog 2>&1
+
+## link to latest sitrep and dive reports every 10 minutes
+0,10,20,30,40,50 * * * * su dataprocessor -c "/mnt/nautilusfs/install/oetds/current/processing/linktocurrent.sh /mnt/nautilusfs/data/current/processed/dive_plans pdf" >> /var/log/synclogs/processing.log 2>&1
+0,10,20,30,40,50 * * * * su dataprocessor -c "/mnt/nautilusfs/install/oetds/current/processing/linktocurrent.sh /mnt/nautilusfs/data/current/processed/SitReps pdf" >> /var/log/synclogs/processing.log 2>&1
+
